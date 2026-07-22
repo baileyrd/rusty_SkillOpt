@@ -10,18 +10,43 @@ pub struct SyntheticArithmeticParams {
     pub val_size: usize,
     pub test_size: usize,
     pub seed: u64,
-    /// Fraction of problems (0.0-1.0) that include an irrelevant distractor
-    /// number, e.g. "Alice is 12. Bob has 3 apples and buys 4 more." — the
-    /// distractor (12) shouldn't affect the answer. This is where a naive
-    /// initial skill tends to fail and gives the optimizer something real
-    /// to fix.
+    /// Per-distractor inclusion probability (0.0-1.0). Each distractor is
+    /// an irrelevant sentence, e.g. "Alice is 12 years old." — a number
+    /// that shouldn't affect the answer. This is where a naive initial
+    /// skill tends to fail and gives the optimizer something real to fix.
     pub distractor_rate: f64,
+    /// Max number of distractor sentences considered per problem (each
+    /// included independently with probability `distractor_rate`).
+    pub max_distractors: usize,
+    /// Fraction of problems (0.0-1.0) that chain 2-3 sequential operations
+    /// (gain/lose/double/halve) instead of a single one. Tracking a running
+    /// total across several steps — in the stated order, ignoring
+    /// distractors along the way — is where small models start making real
+    /// mistakes, which is exactly the kind of failure a skill instruction
+    /// like "recompute the running total after each step" can fix.
+    pub multi_step_rate: f64,
 }
 
 impl Default for SyntheticArithmeticParams {
     fn default() -> Self {
-        Self { train_size: 24, val_size: 8, test_size: 16, seed: 0, distractor_rate: 0.5 }
+        Self {
+            train_size: 24,
+            val_size: 8,
+            test_size: 16,
+            seed: 0,
+            distractor_rate: 0.5,
+            max_distractors: 1,
+            multi_step_rate: 0.0,
+        }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum StepKind {
+    Gain(i64),
+    Lose(i64),
+    Double,
+    Halve,
 }
 
 /// A small, fully offline, deterministically-generated word-problem
@@ -41,7 +66,7 @@ impl SyntheticArithmeticEnv {
         let mut gen = |rng: &mut StdRng, n: usize, prefix: &str| -> Vec<Example> {
             (0..n)
                 .map(|_| {
-                    let ex = gen_example(rng, params.distractor_rate, next_id, prefix);
+                    let ex = gen_example(rng, &params, next_id, prefix);
                     next_id += 1;
                     ex
                 })
@@ -54,33 +79,74 @@ impl SyntheticArithmeticEnv {
     }
 }
 
-fn gen_example(rng: &mut StdRng, distractor_rate: f64, id: usize, prefix: &str) -> Example {
+fn gen_example(rng: &mut StdRng, params: &SyntheticArithmeticParams, id: usize, prefix: &str) -> Example {
     let names = ["Alice", "Bob", "Carla", "Dev", "Ewa", "Femi"];
     let items = ["apples", "marbles", "stickers", "coins", "books"];
 
     let name = names[rng.gen_range(0..names.len())];
     let item = items[rng.gen_range(0..items.len())];
     let start: i64 = rng.gen_range(1..30);
-    let delta: i64 = rng.gen_range(-10..15);
-    let op_is_gain = delta >= 0;
 
-    let mut input = if op_is_gain {
-        format!("{name} has {start} {item} and gets {delta} more {item}.")
-    } else {
-        format!("{name} has {start} {item} and gives away {} {item}.", -delta)
-    };
+    let mut value = start;
+    let mut sentences = vec![format!("{name} has {value} {item}.")];
 
-    if rng.gen_bool(distractor_rate) {
-        let distractor_name = names[rng.gen_range(0..names.len())];
-        let distractor_age: i64 = rng.gen_range(5..80);
-        input.push_str(&format!(" {distractor_name} is {distractor_age} years old."));
+    let multi_step = rng.gen_bool(params.multi_step_rate);
+    let steps = if multi_step { rng.gen_range(2..=3) } else { 1 };
+
+    for _ in 0..steps {
+        let mut candidates: Vec<StepKind> = vec![StepKind::Gain(rng.gen_range(1..12))];
+        if value >= 1 {
+            candidates.push(StepKind::Lose(rng.gen_range(1..=value.min(12))));
+        }
+        // Double/halve only show up in multi-step chains, so single-op
+        // problems stay plain addition/subtraction like before.
+        if multi_step && (1..=40).contains(&value) {
+            candidates.push(StepKind::Double);
+        }
+        if multi_step && value % 2 == 0 && value >= 2 {
+            candidates.push(StepKind::Halve);
+        }
+
+        let step = candidates[rng.gen_range(0..candidates.len())];
+        let sentence = match step {
+            StepKind::Gain(d) => {
+                value += d;
+                format!("Then {name} gets {d} more {item}.")
+            }
+            StepKind::Lose(d) => {
+                value -= d;
+                format!("Then {name} gives away {d} {item}.")
+            }
+            StepKind::Double => {
+                value *= 2;
+                format!("Then {name}'s {item} collection doubles.")
+            }
+            StepKind::Halve => {
+                value /= 2;
+                format!("Then {name} gives away half of the {item}.")
+            }
+        };
+        sentences.push(sentence);
     }
 
-    input.push_str(&format!(" How many {item} does {name} have now?"));
+    for _ in 0..params.max_distractors {
+        if rng.gen_bool(params.distractor_rate) {
+            let distractor_name = names[rng.gen_range(0..names.len())];
+            let distractor = if rng.gen_bool(0.5) {
+                let age: i64 = rng.gen_range(5..80);
+                format!("{distractor_name} is {age} years old.")
+            } else {
+                let other_item = items[rng.gen_range(0..items.len())];
+                let count: i64 = rng.gen_range(1..20);
+                format!("{distractor_name} has {count} {other_item}.")
+            };
+            sentences.push(distractor);
+        }
+    }
 
-    let expected = (start + delta).to_string();
+    sentences.push(format!("How many {item} does {name} have now?"));
 
-    Example { id: format!("{prefix}-{id}"), input, expected }
+    Example { id: format!("{prefix}-{id}"), input: sentences.join(" "), expected: value.to_string() }
 }
 
 impl Environment for SyntheticArithmeticEnv {
@@ -161,6 +227,7 @@ mod tests {
             test_size: 3,
             seed: 1,
             distractor_rate: 0.5,
+            ..Default::default()
         });
         assert_eq!(env.train_examples().len(), 5);
         assert_eq!(env.val_examples().len(), 2);
@@ -194,6 +261,29 @@ mod tests {
         let ex = Example { id: "x".into(), input: String::new(), expected: "-3".into() };
         assert_eq!(env.score(&ex, "The result is -3."), 1.0);
         assert_eq!(env.score(&ex, "The result is 3."), 0.0);
+    }
+
+    #[test]
+    fn multi_step_problems_self_score_and_stay_nonnegative() {
+        let env = SyntheticArithmeticEnv::new(SyntheticArithmeticParams {
+            train_size: 40,
+            val_size: 10,
+            test_size: 10,
+            seed: 42,
+            distractor_rate: 1.0,
+            max_distractors: 2,
+            multi_step_rate: 1.0,
+        });
+        let mut saw_multi_sentence = false;
+        for e in env.train_examples() {
+            let expected: i64 = e.expected.parse().unwrap();
+            assert!(expected >= 0, "value should never go negative: {}", e.input);
+            assert_eq!(env.score(e, &e.expected), 1.0);
+            if e.input.matches("Then ").count() >= 2 {
+                saw_multi_sentence = true;
+            }
+        }
+        assert!(saw_multi_sentence, "expected at least one multi-step problem in the batch");
     }
 
     #[test]
