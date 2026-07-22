@@ -1,10 +1,37 @@
 # Release Notes
 
-Tracks notable changes to this repo, reverse chronological. This repo develops
-on a feature branch pushed directly to `origin` rather than through merged
-PRs, so entries are keyed by commit rather than PR number.
+Tracks notable changes to this repo, reverse chronological. As of PR #1, every
+change lands through a PR against `main` (merge commit, green CI required);
+entries from before that point predate the PR workflow and are keyed by
+commit instead.
 
 ---
+
+## Fix distractor sentences colliding with the protagonist's name
+**2026-07-22**
+
+- **Fixed:** `synthetic_arithmetic`'s distractor generator could pick the
+  protagonist's own name, producing self-contradictory problems (e.g. "Bob
+  has 18 stickers... Bob has 1 stickers."). Found via a real training run
+  (`full_claude_bigtrain.yaml`, 64 train examples): the one test failure out
+  of 16 turned out to be exactly this case, not a genuine Haiku reasoning
+  gap. Distractor name selection now excludes the protagonist.
+- New regression test generates 200 examples with `distractor_rate: 1.0`,
+  `max_distractors: 2` and asserts the protagonist is never restated.
+
+## Add full_claude_bigtrain.yaml: does the val/test ceiling hold at scale?
+**2026-07-22** · [PR #1](https://github.com/baileyrd/rusty_SkillOpt/pull/1)
+
+- **Added:** `configs/full_claude_bigtrain.yaml` — same difficulty knobs as
+  `full_claude.yaml` but `train_size` bumped from 24 to 64 (`epochs` dropped
+  1 -> 1 to avoid compounding the size increase with a second epoch's calls).
+- Run result: still 0/16 steps accepted, val 1.0 -> 1.0 (Haiku scored every
+  single training example correctly too) — the ceiling from `full_claude.yaml`
+  holds regardless of training-set size; it's the difficulty level, not an
+  artifact of a small, easily-saturated set. Test score came in at 0.938
+  (15/16), and the one failure turned out to be the distractor-collision bug
+  fixed above, not a real generalization gap.
+- First PR merged through the new PR-against-`main` workflow.
 
 ## Apply repo-config governance scaffolding; fix formatting
 **2026-07-22**
