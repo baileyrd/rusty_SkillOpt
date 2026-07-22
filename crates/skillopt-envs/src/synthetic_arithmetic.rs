@@ -134,9 +134,13 @@ fn gen_example(
         sentences.push(sentence);
     }
 
+    // Excludes the protagonist so a distractor can never restate/contradict
+    // their own count (e.g. "Bob has 18 stickers... Bob has 1 stickers.").
+    let other_names: Vec<&str> = names.into_iter().filter(|n| *n != name).collect();
+
     for _ in 0..params.max_distractors {
         if rng.gen_bool(params.distractor_rate) {
-            let distractor_name = names[rng.gen_range(0..names.len())];
+            let distractor_name = other_names[rng.gen_range(0..other_names.len())];
             let distractor = if rng.gen_bool(0.5) {
                 let age: i64 = rng.gen_range(5..80);
                 format!("{distractor_name} is {age} years old.")
@@ -217,6 +221,35 @@ fn last_integer(text: &str) -> Option<i64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn distractors_never_restate_the_protagonist() {
+        // Regression test: a distractor sentence used to be able to pick the
+        // same name as the protagonist (and even the same item), producing
+        // self-contradictory problems like "Bob has 18 stickers... Bob has 1
+        // stickers." — confusing the model for reasons unrelated to the
+        // skill being tested. Forced distractor_rate: 1.0 to exercise every
+        // possible distractor slot across a large batch.
+        let env = SyntheticArithmeticEnv::new(SyntheticArithmeticParams {
+            train_size: 200,
+            val_size: 0,
+            test_size: 0,
+            seed: 7,
+            distractor_rate: 1.0,
+            max_distractors: 2,
+            multi_step_rate: 0.5,
+        });
+        for e in env.train_examples() {
+            let protagonist = e.input.split(" has ").next().unwrap();
+            let protagonist_restated = format!("{protagonist} has ");
+            let occurrences = e.input.matches(&protagonist_restated).count();
+            assert_eq!(
+                occurrences, 1,
+                "protagonist should only be introduced once, found in: {}",
+                e.input
+            );
+        }
+    }
 
     #[test]
     fn generation_is_deterministic_given_seed() {
