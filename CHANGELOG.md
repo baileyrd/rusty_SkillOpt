@@ -24,6 +24,9 @@ Format: Added / Changed / Deprecated / Removed / Fixed / Security, newest first.
   store, so outbound HTTPS works through environments with a TLS-terminating
   egress proxy.
 - Workspace formatted to rustfmt defaults so the new CI workflow starts green.
+- `synthetic_arithmetic`'s distractor sentences could name the protagonist
+  themself, producing self-contradictory problem text; distractor name
+  selection now excludes the protagonist.
 
 ### Changed
 ### Security
