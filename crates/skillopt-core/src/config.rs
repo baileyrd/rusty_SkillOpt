@@ -1,0 +1,153 @@
+use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+
+/// Which `ChatBackend` implementation to construct. `skillopt-model` owns
+/// the actual construction logic; core only needs to name the choice so it
+/// round-trips through YAML.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Provider {
+    Anthropic,
+    OpenAiCompatible,
+    Mock,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackendConfig {
+    pub provider: Provider,
+    pub model: String,
+    #[serde(default)]
+    pub base_url: Option<String>,
+    /// Name of the environment variable holding the API key. Defaults to a
+    /// provider-appropriate name (e.g. `ANTHROPIC_API_KEY`) when unset.
+    #[serde(default)]
+    pub api_key_env: Option<String>,
+    #[serde(default)]
+    pub temperature: Option<f32>,
+    #[serde(default = "default_max_tokens")]
+    pub max_tokens: u32,
+}
+
+fn default_max_tokens() -> u32 {
+    1024
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrainConfig {
+    #[serde(default = "default_epochs")]
+    pub epochs: usize,
+    #[serde(default = "default_batch_size")]
+    pub batch_size: usize,
+    #[serde(default = "default_val_batch_size")]
+    pub val_batch_size: usize,
+    /// Upper bound on the number of `EditOp`s the optimizer may propose in
+    /// a single step (the text-space analogue of a learning-rate cap).
+    #[serde(default = "default_max_ops_per_edit")]
+    pub max_ops_per_edit: usize,
+    /// How many recent rejected-edit rationales to keep and show the
+    /// optimizer, so it doesn't retry the same rejected change.
+    #[serde(default = "default_rejection_buffer_size")]
+    pub rejection_buffer_size: usize,
+    /// Minimum validation-score improvement over the current best required
+    /// for the gate to accept a candidate edit.
+    #[serde(default = "default_min_improvement")]
+    pub min_improvement: f64,
+    #[serde(default = "default_seed")]
+    pub seed: u64,
+}
+
+fn default_epochs() -> usize {
+    3
+}
+fn default_batch_size() -> usize {
+    4
+}
+fn default_val_batch_size() -> usize {
+    8
+}
+fn default_max_ops_per_edit() -> usize {
+    3
+}
+fn default_rejection_buffer_size() -> usize {
+    5
+}
+fn default_min_improvement() -> f64 {
+    1e-6
+}
+fn default_seed() -> u64 {
+    0
+}
+
+impl Default for TrainConfig {
+    fn default() -> Self {
+        Self {
+            epochs: default_epochs(),
+            batch_size: default_batch_size(),
+            val_batch_size: default_val_batch_size(),
+            max_ops_per_edit: default_max_ops_per_edit(),
+            rejection_buffer_size: default_rejection_buffer_size(),
+            min_improvement: default_min_improvement(),
+            seed: default_seed(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EnvConfig {
+    pub name: String,
+    #[serde(default)]
+    pub params: serde_yaml::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RunConfig {
+    pub skill_path: PathBuf,
+    pub output_dir: PathBuf,
+    pub executor: BackendConfig,
+    pub optimizer: BackendConfig,
+    pub reflector: BackendConfig,
+    #[serde(default)]
+    pub train: TrainConfig,
+    pub env: EnvConfig,
+}
+
+impl RunConfig {
+    pub fn from_yaml_str(s: &str) -> anyhow::Result<Self> {
+        Ok(serde_yaml::from_str(s)?)
+    }
+
+    pub fn from_file(path: &std::path::Path) -> anyhow::Result<Self> {
+        let s = std::fs::read_to_string(path)?;
+        Self::from_yaml_str(&s)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_minimal_config_with_defaults() {
+        let yaml = r#"
+skill_path: skills/initial.md
+output_dir: out
+executor:
+  provider: mock
+  model: mock-executor
+optimizer:
+  provider: mock
+  model: mock-optimizer
+reflector:
+  provider: mock
+  model: mock-reflector
+env:
+  name: synthetic_arithmetic
+"#;
+        let cfg = RunConfig::from_yaml_str(yaml).unwrap();
+        assert_eq!(cfg.train.epochs, 3);
+        assert_eq!(cfg.train.batch_size, 4);
+        assert_eq!(cfg.executor.provider, Provider::Mock);
+        assert_eq!(cfg.env.name, "synthetic_arithmetic");
+    }
+}
