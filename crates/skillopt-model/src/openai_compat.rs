@@ -101,17 +101,23 @@ impl ChatBackend for OpenAiCompatBackend {
 
         let status = resp.status();
         let body = resp.text().await?;
-        anyhow::ensure!(status.is_success(), "openai-compatible API error ({status}): {body}");
+        anyhow::ensure!(
+            status.is_success(),
+            "openai-compatible API error ({status}): {body}"
+        );
 
-        let parsed: OaResponse = serde_json::from_str(&body)
-            .map_err(|e| anyhow::anyhow!("failed to parse openai-compatible response: {e}\nbody: {body}"))?;
+        let parsed: OaResponse = serde_json::from_str(&body).map_err(|e| {
+            anyhow::anyhow!("failed to parse openai-compatible response: {e}\nbody: {body}")
+        })?;
 
         let text = parsed
             .choices
             .into_iter()
             .next()
             .and_then(|c| c.message.content)
-            .ok_or_else(|| anyhow::anyhow!("openai-compatible response contained no choices: {body}"))?;
+            .ok_or_else(|| {
+                anyhow::anyhow!("openai-compatible response contained no choices: {body}")
+            })?;
 
         Ok(text)
     }

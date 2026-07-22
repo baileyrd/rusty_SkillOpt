@@ -29,10 +29,16 @@ pub fn apply_edit(skill: &Skill, edit: &SkillEdit, max_ops: usize) -> Result<Ski
 
     for op in &edit.ops {
         match op {
-            EditOp::Add { anchor: None, content } => {
+            EditOp::Add {
+                anchor: None,
+                content,
+            } => {
                 lines.extend(content.lines().map(str::to_string));
             }
-            EditOp::Add { anchor: Some(anchor), content } => {
+            EditOp::Add {
+                anchor: Some(anchor),
+                content,
+            } => {
                 let idx = find_unique_line(&lines, anchor)?;
                 let insert_at = idx + 1;
                 for (offset, new_line) in content.lines().enumerate() {
@@ -97,7 +103,10 @@ mod tests {
     fn add_without_anchor_appends() {
         let s = skill("# Skill\n- rule one");
         let edit = SkillEdit {
-            ops: vec![EditOp::Add { anchor: None, content: "- rule two".into() }],
+            ops: vec![EditOp::Add {
+                anchor: None,
+                content: "- rule two".into(),
+            }],
             rationale: "test".into(),
         };
         let out = apply_edit(&s, &edit, 4).unwrap();
@@ -108,7 +117,9 @@ mod tests {
     fn delete_removes_line() {
         let s = skill("# Skill\n- rule one\n- rule two");
         let edit = SkillEdit {
-            ops: vec![EditOp::Delete { anchor: "- rule one".into() }],
+            ops: vec![EditOp::Delete {
+                anchor: "- rule one".into(),
+            }],
             rationale: "test".into(),
         };
         let out = apply_edit(&s, &edit, 4).unwrap();
@@ -133,7 +144,9 @@ mod tests {
     fn missing_anchor_errors() {
         let s = skill("# Skill\n- rule one");
         let edit = SkillEdit {
-            ops: vec![EditOp::Delete { anchor: "- does not exist".into() }],
+            ops: vec![EditOp::Delete {
+                anchor: "- does not exist".into(),
+            }],
             rationale: "test".into(),
         };
         assert_eq!(
@@ -146,7 +159,9 @@ mod tests {
     fn ambiguous_anchor_errors() {
         let s = skill("# Skill\n- rule\n- rule");
         let edit = SkillEdit {
-            ops: vec![EditOp::Delete { anchor: "- rule".into() }],
+            ops: vec![EditOp::Delete {
+                anchor: "- rule".into(),
+            }],
             rationale: "test".into(),
         };
         assert_eq!(
@@ -160,18 +175,30 @@ mod tests {
         let s = skill("# Skill");
         let edit = SkillEdit {
             ops: vec![
-                EditOp::Add { anchor: None, content: "a".into() },
-                EditOp::Add { anchor: None, content: "b".into() },
+                EditOp::Add {
+                    anchor: None,
+                    content: "a".into(),
+                },
+                EditOp::Add {
+                    anchor: None,
+                    content: "b".into(),
+                },
             ],
             rationale: "test".into(),
         };
-        assert_eq!(apply_edit(&s, &edit, 1).unwrap_err(), EditError::TooManyOps(2, 1));
+        assert_eq!(
+            apply_edit(&s, &edit, 1).unwrap_err(),
+            EditError::TooManyOps(2, 1)
+        );
     }
 
     #[test]
     fn empty_edit_errors() {
         let s = skill("# Skill");
-        let edit = SkillEdit { ops: vec![], rationale: "test".into() };
+        let edit = SkillEdit {
+            ops: vec![],
+            rationale: "test".into(),
+        };
         assert_eq!(apply_edit(&s, &edit, 4).unwrap_err(), EditError::EmptyEdit);
     }
 
@@ -180,8 +207,13 @@ mod tests {
         let s = skill("# Skill\n- a\n- b");
         let edit = SkillEdit {
             ops: vec![
-                EditOp::Add { anchor: Some("- a".into()), content: "- a.5".into() },
-                EditOp::Delete { anchor: "- b".into() },
+                EditOp::Add {
+                    anchor: Some("- a".into()),
+                    content: "- a.5".into(),
+                },
+                EditOp::Delete {
+                    anchor: "- b".into(),
+                },
             ],
             rationale: "test".into(),
         };

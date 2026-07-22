@@ -79,7 +79,12 @@ impl SyntheticArithmeticEnv {
     }
 }
 
-fn gen_example(rng: &mut StdRng, params: &SyntheticArithmeticParams, id: usize, prefix: &str) -> Example {
+fn gen_example(
+    rng: &mut StdRng,
+    params: &SyntheticArithmeticParams,
+    id: usize,
+    prefix: &str,
+) -> Example {
     let names = ["Alice", "Bob", "Carla", "Dev", "Ewa", "Femi"];
     let items = ["apples", "marbles", "stickers", "coins", "books"];
 
@@ -146,7 +151,11 @@ fn gen_example(rng: &mut StdRng, params: &SyntheticArithmeticParams, id: usize, 
 
     sentences.push(format!("How many {item} does {name} have now?"));
 
-    Example { id: format!("{prefix}-{id}"), input: sentences.join(" "), expected: value.to_string() }
+    Example {
+        id: format!("{prefix}-{id}"),
+        input: sentences.join(" "),
+        expected: value.to_string(),
+    }
 }
 
 impl Environment for SyntheticArithmeticEnv {
@@ -211,8 +220,14 @@ mod tests {
 
     #[test]
     fn generation_is_deterministic_given_seed() {
-        let a = SyntheticArithmeticEnv::new(SyntheticArithmeticParams { seed: 5, ..Default::default() });
-        let b = SyntheticArithmeticEnv::new(SyntheticArithmeticParams { seed: 5, ..Default::default() });
+        let a = SyntheticArithmeticEnv::new(SyntheticArithmeticParams {
+            seed: 5,
+            ..Default::default()
+        });
+        let b = SyntheticArithmeticEnv::new(SyntheticArithmeticParams {
+            seed: 5,
+            ..Default::default()
+        });
         assert_eq!(
             a.train.iter().map(|e| &e.input).collect::<Vec<_>>(),
             b.train.iter().map(|e| &e.input).collect::<Vec<_>>()
@@ -242,13 +257,21 @@ mod tests {
         let before = ids.len();
         ids.sort();
         ids.dedup();
-        assert_eq!(ids.len(), before, "example ids must be unique across splits");
+        assert_eq!(
+            ids.len(),
+            before,
+            "example ids must be unique across splits"
+        );
     }
 
     #[test]
     fn scores_exact_answer_amid_prose() {
         let env = SyntheticArithmeticEnv::new(SyntheticArithmeticParams::default());
-        let ex = Example { id: "x".into(), input: String::new(), expected: "7".into() };
+        let ex = Example {
+            id: "x".into(),
+            input: String::new(),
+            expected: "7".into(),
+        };
         assert_eq!(env.score(&ex, "The answer is 7."), 1.0);
         assert_eq!(env.score(&ex, "7"), 1.0);
         assert_eq!(env.score(&ex, "I think it's 8, definitely 8."), 0.0);
@@ -258,7 +281,11 @@ mod tests {
     #[test]
     fn scores_negative_answers() {
         let env = SyntheticArithmeticEnv::new(SyntheticArithmeticParams::default());
-        let ex = Example { id: "x".into(), input: String::new(), expected: "-3".into() };
+        let ex = Example {
+            id: "x".into(),
+            input: String::new(),
+            expected: "-3".into(),
+        };
         assert_eq!(env.score(&ex, "The result is -3."), 1.0);
         assert_eq!(env.score(&ex, "The result is 3."), 0.0);
     }
@@ -283,18 +310,28 @@ mod tests {
                 saw_multi_sentence = true;
             }
         }
-        assert!(saw_multi_sentence, "expected at least one multi-step problem in the batch");
+        assert!(
+            saw_multi_sentence,
+            "expected at least one multi-step problem in the batch"
+        );
     }
 
     #[test]
     fn expected_answers_match_generated_arithmetic() {
-        let env = SyntheticArithmeticEnv::new(SyntheticArithmeticParams { seed: 3, ..Default::default() });
+        let env = SyntheticArithmeticEnv::new(SyntheticArithmeticParams {
+            seed: 3,
+            ..Default::default()
+        });
         for e in env.train_examples() {
             // Every generated expected value must itself be parseable and
             // recoverable via the same scoring function (sanity check that
             // the scorer and generator agree).
             let expected: i64 = e.expected.parse().unwrap();
-            assert_eq!(env.score(e, &e.expected), 1.0, "expected {expected} should self-score 1.0");
+            assert_eq!(
+                env.score(e, &e.expected),
+                1.0,
+                "expected {expected} should self-score 1.0"
+            );
         }
     }
 }

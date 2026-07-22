@@ -16,7 +16,11 @@ pub struct MockBackend {
 
 impl MockBackend {
     pub fn new(name: impl Into<String>, responses: Vec<String>) -> Self {
-        Self { name: name.into(), responses, calls: AtomicUsize::new(0) }
+        Self {
+            name: name.into(),
+            responses,
+            calls: AtomicUsize::new(0),
+        }
     }
 
     /// A mock that just echoes the last user/assistant message content back,
@@ -35,7 +39,10 @@ impl ChatBackend for MockBackend {
     async fn chat(&self, messages: &[Message]) -> anyhow::Result<String> {
         let call_idx = self.calls.fetch_add(1, Ordering::SeqCst);
         if self.responses.is_empty() {
-            let last = messages.last().map(|m| m.content.clone()).unwrap_or_default();
+            let last = messages
+                .last()
+                .map(|m| m.content.clone())
+                .unwrap_or_default();
             return Ok(last);
         }
         let idx = call_idx.min(self.responses.len() - 1);

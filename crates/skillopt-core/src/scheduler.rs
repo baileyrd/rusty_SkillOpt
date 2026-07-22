@@ -15,7 +15,10 @@ pub struct BatchScheduler {
 
 impl BatchScheduler {
     pub fn new(seed: u64, batch_size: usize) -> Self {
-        Self { rng: StdRng::seed_from_u64(seed), batch_size: batch_size.max(1) }
+        Self {
+            rng: StdRng::seed_from_u64(seed),
+            batch_size: batch_size.max(1),
+        }
     }
 
     /// Returns the training examples split into shuffled batches for one
@@ -37,7 +40,10 @@ pub struct RejectionBuffer {
 
 impl RejectionBuffer {
     pub fn new(capacity: usize) -> Self {
-        Self { capacity, entries: VecDeque::with_capacity(capacity) }
+        Self {
+            capacity,
+            entries: VecDeque::with_capacity(capacity),
+        }
     }
 
     pub fn push(&mut self, rationale: String) {
@@ -61,7 +67,11 @@ mod tests {
 
     fn examples(n: usize) -> Vec<Example> {
         (0..n)
-            .map(|i| Example { id: format!("ex{i}"), input: String::new(), expected: String::new() })
+            .map(|i| Example {
+                id: format!("ex{i}"),
+                input: String::new(),
+                expected: String::new(),
+            })
             .collect()
     }
 
@@ -80,10 +90,16 @@ mod tests {
         let ex = examples(10);
         let mut s1 = BatchScheduler::new(7, 3);
         let mut s2 = BatchScheduler::new(7, 3);
-        let b1: Vec<Vec<&str>> =
-            s1.epoch_batches(&ex).iter().map(|b| b.iter().map(|e| e.id.as_str()).collect()).collect();
-        let b2: Vec<Vec<&str>> =
-            s2.epoch_batches(&ex).iter().map(|b| b.iter().map(|e| e.id.as_str()).collect()).collect();
+        let b1: Vec<Vec<&str>> = s1
+            .epoch_batches(&ex)
+            .iter()
+            .map(|b| b.iter().map(|e| e.id.as_str()).collect())
+            .collect();
+        let b2: Vec<Vec<&str>> = s2
+            .epoch_batches(&ex)
+            .iter()
+            .map(|b| b.iter().map(|e| e.id.as_str()).collect())
+            .collect();
         assert_eq!(b1, b2);
     }
 

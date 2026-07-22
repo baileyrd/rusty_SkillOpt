@@ -4,7 +4,11 @@ use clap::{Parser, Subcommand};
 use skillopt_core::{Engine, RunConfig, Skill};
 
 #[derive(Parser)]
-#[command(name = "skillopt", version, about = "Hand-rolled Rust reimplementation of the SkillOpt training loop")]
+#[command(
+    name = "skillopt",
+    version,
+    about = "Hand-rolled Rust reimplementation of the SkillOpt training loop"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -39,12 +43,18 @@ enum Split {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt().with_env_filter(tracing_subscriber::EnvFilter::from_default_env()).init();
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
 
     let cli = Cli::parse();
     match cli.command {
         Command::Train { config } => run_train(&config).await,
-        Command::Eval { config, skill, split } => run_eval(&config, &skill, split).await,
+        Command::Eval {
+            config,
+            skill,
+            split,
+        } => run_eval(&config, &skill, split).await,
     }
 }
 
@@ -86,12 +96,20 @@ async fn run_train(config_path: &std::path::Path) -> anyhow::Result<()> {
     if let Some(test) = &outcome.test_result {
         println!("test score: {:.3}", test.mean_score);
     }
-    println!("wrote {} and {}", best_skill_path.display(), report_path.display());
+    println!(
+        "wrote {} and {}",
+        best_skill_path.display(),
+        report_path.display()
+    );
 
     Ok(())
 }
 
-async fn run_eval(config_path: &std::path::Path, skill_path: &std::path::Path, split: Split) -> anyhow::Result<()> {
+async fn run_eval(
+    config_path: &std::path::Path,
+    skill_path: &std::path::Path,
+    split: Split,
+) -> anyhow::Result<()> {
     let cfg = RunConfig::from_file(config_path)?;
     let skill_text = std::fs::read_to_string(skill_path)
         .map_err(|e| anyhow::anyhow!("failed to read skill file {:?}: {e}", skill_path))?;
@@ -117,7 +135,12 @@ async fn run_eval(config_path: &std::path::Path, skill_path: &std::path::Path, s
         scores.push(env.score(example, &output));
     }
     let mean = scores.iter().sum::<f64>() / scores.len() as f64;
-    println!("{:?}: mean score {:.3} over {} examples", cfg.env.name, mean, scores.len());
+    println!(
+        "{:?}: mean score {:.3} over {} examples",
+        cfg.env.name,
+        mean,
+        scores.len()
+    );
 
     Ok(())
 }

@@ -74,13 +74,20 @@ impl ChatBackend for AnthropicBackend {
         for m in messages {
             match m.role {
                 Role::System => system_parts.push(m.content.clone()),
-                Role::User => turns.push(AnthropicMessage { role: "user", content: m.content.clone() }),
-                Role::Assistant => {
-                    turns.push(AnthropicMessage { role: "assistant", content: m.content.clone() })
-                }
+                Role::User => turns.push(AnthropicMessage {
+                    role: "user",
+                    content: m.content.clone(),
+                }),
+                Role::Assistant => turns.push(AnthropicMessage {
+                    role: "assistant",
+                    content: m.content.clone(),
+                }),
             }
         }
-        anyhow::ensure!(!turns.is_empty(), "anthropic chat requires at least one user/assistant message");
+        anyhow::ensure!(
+            !turns.is_empty(),
+            "anthropic chat requires at least one user/assistant message"
+        );
 
         let req = AnthropicRequest {
             model: self.model.clone(),
@@ -101,10 +108,14 @@ impl ChatBackend for AnthropicBackend {
 
         let status = resp.status();
         let body = resp.text().await?;
-        anyhow::ensure!(status.is_success(), "anthropic API error ({status}): {body}");
+        anyhow::ensure!(
+            status.is_success(),
+            "anthropic API error ({status}): {body}"
+        );
 
-        let parsed: AnthropicResponse = serde_json::from_str(&body)
-            .map_err(|e| anyhow::anyhow!("failed to parse anthropic response: {e}\nbody: {body}"))?;
+        let parsed: AnthropicResponse = serde_json::from_str(&body).map_err(|e| {
+            anyhow::anyhow!("failed to parse anthropic response: {e}\nbody: {body}")
+        })?;
 
         let text: String = parsed
             .content
@@ -114,7 +125,10 @@ impl ChatBackend for AnthropicBackend {
             .collect::<Vec<_>>()
             .join("");
 
-        anyhow::ensure!(!text.is_empty(), "anthropic response contained no text content: {body}");
+        anyhow::ensure!(
+            !text.is_empty(),
+            "anthropic response contained no text content: {body}"
+        );
         Ok(text)
     }
 }

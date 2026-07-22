@@ -102,7 +102,11 @@ pub fn select_feedback(
     sorted.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
     sorted.truncate(highlight_count);
 
-    AggregatedFeedback { mean_score, highlighted: sorted, rejected_edit_summaries }
+    AggregatedFeedback {
+        mean_score,
+        highlighted: sorted,
+        rejected_edit_summaries,
+    }
 }
 
 #[cfg(test)]
@@ -112,15 +116,30 @@ mod tests {
     #[test]
     fn extracts_json_from_fenced_response() {
         let raw = "Sure, here you go:\n```json\n{\"ops\": [], \"rationale\": \"x\"}\n```\nhope that helps";
-        assert_eq!(extract_json_object(raw), "{\"ops\": [], \"rationale\": \"x\"}");
+        assert_eq!(
+            extract_json_object(raw),
+            "{\"ops\": [], \"rationale\": \"x\"}"
+        );
     }
 
     #[test]
     fn select_feedback_picks_lowest_scores() {
         let reflections = vec![
-            Reflection { example_id: "a".into(), score: 1.0, critique: "ok".into() },
-            Reflection { example_id: "b".into(), score: 0.0, critique: "bad".into() },
-            Reflection { example_id: "c".into(), score: 0.5, critique: "meh".into() },
+            Reflection {
+                example_id: "a".into(),
+                score: 1.0,
+                critique: "ok".into(),
+            },
+            Reflection {
+                example_id: "b".into(),
+                score: 0.0,
+                critique: "bad".into(),
+            },
+            Reflection {
+                example_id: "c".into(),
+                score: 0.5,
+                critique: "meh".into(),
+            },
         ];
         let fb = select_feedback(&reflections, 2, vec![]);
         assert_eq!(fb.highlighted.len(), 2);

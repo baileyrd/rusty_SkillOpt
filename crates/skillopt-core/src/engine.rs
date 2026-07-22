@@ -3,11 +3,15 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::config::TrainConfig;
-use crate::prompts::{executor_system_prompt, extract_json_object, optimize_prompt, reflect_prompt, select_feedback};
+use crate::prompts::{
+    executor_system_prompt, extract_json_object, optimize_prompt, reflect_prompt, select_feedback,
+};
 use crate::scheduler::{BatchScheduler, RejectionBuffer};
 use crate::skill_edit::apply_edit;
 use crate::traits::{ChatBackend, Environment};
-use crate::types::{EvalResult, Example, Message, Reflection, Skill, SkillEdit, StepRecord, Trajectory};
+use crate::types::{
+    EvalResult, Example, Message, Reflection, Skill, SkillEdit, StepRecord, Trajectory,
+};
 
 const HIGHLIGHT_COUNT: usize = 3;
 
@@ -36,12 +40,20 @@ impl Engine {
         env: Arc<dyn Environment>,
         cfg: TrainConfig,
     ) -> Self {
-        Self { executor, optimizer, reflector, env, cfg }
+        Self {
+            executor,
+            optimizer,
+            reflector,
+            env,
+            cfg,
+        }
     }
 
     async fn run_executor(&self, skill: &Skill, example: &Example) -> anyhow::Result<String> {
-        let messages =
-            vec![Message::system(executor_system_prompt(skill)), Message::user(example.input.clone())];
+        let messages = vec![
+            Message::system(executor_system_prompt(skill)),
+            Message::user(example.input.clone()),
+        ];
         self.executor.chat(&messages).await
     }
 
@@ -69,8 +81,17 @@ impl Engine {
         Ok(trajectories)
     }
 
-    async fn reflect(&self, trajectories: &[Trajectory], examples: &[&Example]) -> anyhow::Result<Vec<Reflection>> {
-        let by_id = |id: &str| examples.iter().find(|e| e.id == id).expect("trajectory example must exist");
+    async fn reflect(
+        &self,
+        trajectories: &[Trajectory],
+        examples: &[&Example],
+    ) -> anyhow::Result<Vec<Reflection>> {
+        let by_id = |id: &str| {
+            examples
+                .iter()
+                .find(|e| e.id == id)
+                .expect("trajectory example must exist")
+        };
 
         let mut reflections = Vec::with_capacity(trajectories.len());
         for t in trajectories {
@@ -78,17 +99,26 @@ impl Engine {
             let score = self.env.score(example, &t.output);
             let prompt = reflect_prompt(&t.input, &t.expected, &t.output, score);
             let critique = self.reflector.chat(&[Message::user(prompt)]).await?;
-            reflections.push(Reflection { example_id: t.example_id.clone(), score, critique });
+            reflections.push(Reflection {
+                example_id: t.example_id.clone(),
+                score,
+                critique,
+            });
         }
         Ok(reflections)
     }
 
-    async fn optimize(&self, skill: &Skill, feedback: &crate::types::AggregatedFeedback) -> anyhow::Result<SkillEdit> {
+    async fn optimize(
+        &self,
+        skill: &Skill,
+        feedback: &crate::types::AggregatedFeedback,
+    ) -> anyhow::Result<SkillEdit> {
         let prompt = optimize_prompt(skill, feedback, self.cfg.max_ops_per_edit);
         let raw = self.optimizer.chat(&[Message::user(prompt)]).await?;
         let json = extract_json_object(&raw);
-        let edit: SkillEdit = serde_json::from_str(json)
-            .map_err(|e| anyhow::anyhow!("failed to parse optimizer output as SkillEdit: {e}\nraw: {raw}"))?;
+        let edit: SkillEdit = serde_json::from_str(json).map_err(|e| {
+            anyhow::anyhow!("failed to parse optimizer output as SkillEdit: {e}\nraw: {raw}")
+        })?;
         Ok(edit)
     }
 
@@ -96,7 +126,10 @@ impl Engine {
         let train_examples = self.env.train_examples();
         let val_examples = self.env.val_examples();
 
-        anyhow::ensure!(!train_examples.is_empty(), "environment has no training examples");
+        anyhow::ensure!(
+            !train_examples.is_empty(),
+            "environment has no training examples"
+        );
 
         let mut best_skill = initial_skill;
         let val_subset = subset(val_examples, self.cfg.val_batch_size);
@@ -112,11 +145,19 @@ impl Engine {
             let batches = scheduler.epoch_batches(train_examples);
             for (batch_idx, batch) in batches.iter().enumerate() {
                 let step_result = self
-                    .run_step(&best_skill, batch, val_subset, best_val_score, &mut rejection_buffer)
+                    .run_step(
+                        &best_skill,
+                        batch,
+                        val_subset,
+                        best_val_score,
+                        &mut rejection_buffer,
+                    )
                     .await?;
 
                 if step_result.accepted {
-                    best_skill = step_result.candidate_skill.expect("accepted step must have a candidate");
+                    best_skill = step_result
+                        .candidate_skill
+                        .expect("accepted step must have a candidate");
                     best_val_score = step_result.record.val_mean_score;
                 }
                 steps.push(StepRecord {
@@ -129,10 +170,19 @@ impl Engine {
         }
 
         let test_examples = self.env.test_examples();
-        let test_result =
-            if test_examples.is_empty() { None } else { Some(self.evaluate(&best_skill, test_examples).await?) };
+        let test_result = if test_examples.is_empty() {
+            None
+        } else {
+            Some(self.evaluate(&best_skill, test_examples).await?)
+        };
 
-        Ok(TrainOutcome { best_skill, best_val_score, initial_val_score, steps, test_result })
+        Ok(TrainOutcome {
+            best_skill,
+            best_val_score,
+            initial_val_score,
+            steps,
+            test_result,
+        })
     }
 
     async fn run_step(
@@ -242,7 +292,11 @@ mod tests {
 
     impl ScriptedBackend {
         fn new(name: &'static str, responses: Vec<String>) -> Self {
-            Self { name, responses: Mutex::new(responses), calls: AtomicUsize::new(0) }
+            Self {
+                name,
+                responses: Mutex::new(responses),
+                calls: AtomicUsize::new(0),
+            }
         }
     }
 
@@ -293,7 +347,11 @@ mod tests {
     }
 
     fn ex(id: &str, input: &str, expected: &str) -> Example {
-        Example { id: id.into(), input: input.into(), expected: expected.into() }
+        Example {
+            id: id.into(),
+            input: input.into(),
+            expected: expected.into(),
+        }
     }
 
     #[tokio::test]
@@ -306,13 +364,21 @@ mod tests {
 
         // Executor always answers "hi" (wrong) so every rollout scores 0.
         let executor = Arc::new(ScriptedBackend::new("executor", vec!["hi".into()]));
-        let reflector = Arc::new(ScriptedBackend::new("reflector", vec!["say HELLO instead".into()]));
+        let reflector = Arc::new(ScriptedBackend::new(
+            "reflector",
+            vec!["say HELLO instead".into()],
+        ));
         let optimizer = Arc::new(ScriptedBackend::new(
             "optimizer",
             vec![r#"{"ops":[{"op":"add","anchor":null,"content":"Always answer HELLO."}],"rationale":"add explicit answer rule"}"#.into()],
         ));
 
-        let cfg = TrainConfig { epochs: 1, batch_size: 1, val_batch_size: 1, ..Default::default() };
+        let cfg = TrainConfig {
+            epochs: 1,
+            batch_size: 1,
+            val_batch_size: 1,
+            ..Default::default()
+        };
         let engine = Engine::new(executor, optimizer, reflector, env, cfg);
         let outcome = engine.train(Skill::new("# Skill\n")).await.unwrap();
 
@@ -333,9 +399,17 @@ mod tests {
         });
         let executor = Arc::new(ScriptedBackend::new("executor", vec!["hi".into()]));
         let reflector = Arc::new(ScriptedBackend::new("reflector", vec!["needs work".into()]));
-        let optimizer = Arc::new(ScriptedBackend::new("optimizer", vec!["not json at all".into()]));
+        let optimizer = Arc::new(ScriptedBackend::new(
+            "optimizer",
+            vec!["not json at all".into()],
+        ));
 
-        let cfg = TrainConfig { epochs: 1, batch_size: 1, val_batch_size: 1, ..Default::default() };
+        let cfg = TrainConfig {
+            epochs: 1,
+            batch_size: 1,
+            val_batch_size: 1,
+            ..Default::default()
+        };
         let engine = Engine::new(executor, optimizer, reflector, env, cfg);
         let outcome = engine.train(Skill::new("# Skill\n")).await.unwrap();
 
@@ -371,13 +445,21 @@ mod tests {
             test: vec![ex("te1", "hi", "HELLO")],
         });
         let executor = Arc::new(ObedientExecutor);
-        let reflector = Arc::new(ScriptedBackend::new("reflector", vec!["say HELLO instead".into()]));
+        let reflector = Arc::new(ScriptedBackend::new(
+            "reflector",
+            vec!["say HELLO instead".into()],
+        ));
         let optimizer = Arc::new(ScriptedBackend::new(
             "optimizer",
             vec![r#"{"ops":[{"op":"add","anchor":null,"content":"Always answer: HELLO"}],"rationale":"add explicit answer rule"}"#.into()],
         ));
 
-        let cfg = TrainConfig { epochs: 1, batch_size: 1, val_batch_size: 1, ..Default::default() };
+        let cfg = TrainConfig {
+            epochs: 1,
+            batch_size: 1,
+            val_batch_size: 1,
+            ..Default::default()
+        };
         let engine = Engine::new(executor, optimizer, reflector, env, cfg);
         let outcome = engine.train(Skill::new("# Skill\n")).await.unwrap();
 

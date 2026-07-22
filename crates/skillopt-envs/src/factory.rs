@@ -13,8 +13,9 @@ pub fn build_env(cfg: &EnvConfig) -> anyhow::Result<Arc<dyn Environment>> {
             let params: SyntheticArithmeticParams = if cfg.params.is_null() {
                 SyntheticArithmeticParams::default()
             } else {
-                serde_yaml::from_value(cfg.params.clone())
-                    .map_err(|e| anyhow::anyhow!("invalid params for synthetic_arithmetic env: {e}"))?
+                serde_yaml::from_value(cfg.params.clone()).map_err(|e| {
+                    anyhow::anyhow!("invalid params for synthetic_arithmetic env: {e}")
+                })?
             };
             Ok(Arc::new(SyntheticArithmeticEnv::new(params)))
         }

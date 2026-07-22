@@ -14,9 +14,13 @@ pub fn build_backend(cfg: &BackendConfig) -> anyhow::Result<Arc<dyn ChatBackend>
     match cfg.provider {
         Provider::Mock => Ok(Arc::new(MockBackend::echo(cfg.model.clone()))),
         Provider::Anthropic => {
-            let key_env = cfg.api_key_env.clone().unwrap_or_else(|| "ANTHROPIC_API_KEY".to_string());
-            let api_key = std::env::var(&key_env)
-                .map_err(|_| anyhow::anyhow!("missing API key: environment variable {key_env} is not set"))?;
+            let key_env = cfg
+                .api_key_env
+                .clone()
+                .unwrap_or_else(|| "ANTHROPIC_API_KEY".to_string());
+            let api_key = std::env::var(&key_env).map_err(|_| {
+                anyhow::anyhow!("missing API key: environment variable {key_env} is not set")
+            })?;
             Ok(Arc::new(AnthropicBackend::new(
                 api_key,
                 cfg.base_url.clone(),
@@ -26,9 +30,13 @@ pub fn build_backend(cfg: &BackendConfig) -> anyhow::Result<Arc<dyn ChatBackend>
             )))
         }
         Provider::OpenAiCompatible => {
-            let key_env = cfg.api_key_env.clone().unwrap_or_else(|| "OPENAI_API_KEY".to_string());
-            let api_key = std::env::var(&key_env)
-                .map_err(|_| anyhow::anyhow!("missing API key: environment variable {key_env} is not set"))?;
+            let key_env = cfg
+                .api_key_env
+                .clone()
+                .unwrap_or_else(|| "OPENAI_API_KEY".to_string());
+            let api_key = std::env::var(&key_env).map_err(|_| {
+                anyhow::anyhow!("missing API key: environment variable {key_env} is not set")
+            })?;
             Ok(Arc::new(OpenAiCompatBackend::new(
                 api_key,
                 cfg.base_url.clone(),

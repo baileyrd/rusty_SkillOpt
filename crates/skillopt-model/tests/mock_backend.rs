@@ -4,7 +4,10 @@ use skillopt_model::MockBackend;
 #[tokio::test]
 async fn echo_mock_returns_last_message_content() {
     let backend = MockBackend::echo("test");
-    let out = backend.chat(&[Message::system("sys"), Message::user("hello")]).await.unwrap();
+    let out = backend
+        .chat(&[Message::system("sys"), Message::user("hello")])
+        .await
+        .unwrap();
     assert_eq!(out, "hello");
 }
 

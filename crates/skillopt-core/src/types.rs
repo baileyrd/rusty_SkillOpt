@@ -39,13 +39,22 @@ pub struct Message {
 
 impl Message {
     pub fn system(content: impl Into<String>) -> Self {
-        Self { role: Role::System, content: content.into() }
+        Self {
+            role: Role::System,
+            content: content.into(),
+        }
     }
     pub fn user(content: impl Into<String>) -> Self {
-        Self { role: Role::User, content: content.into() }
+        Self {
+            role: Role::User,
+            content: content.into(),
+        }
     }
     pub fn assistant(content: impl Into<String>) -> Self {
-        Self { role: Role::Assistant, content: content.into() }
+        Self {
+            role: Role::Assistant,
+            content: content.into(),
+        }
     }
 }
 
@@ -92,7 +101,10 @@ pub struct AggregatedFeedback {
 pub enum EditOp {
     /// Insert `content` immediately after the line matching `anchor`, or at
     /// the end of the document if `anchor` is `None`.
-    Add { anchor: Option<String>, content: String },
+    Add {
+        anchor: Option<String>,
+        content: String,
+    },
     /// Remove the line matching `anchor`.
     Delete { anchor: String },
     /// Replace the line matching `anchor` with `content`.
@@ -121,7 +133,10 @@ impl EvalResult {
         } else {
             scores.iter().map(|(_, s)| s).sum::<f64>() / scores.len() as f64
         };
-        Self { mean_score, per_example: scores }
+        Self {
+            mean_score,
+            per_example: scores,
+        }
     }
 }
 
