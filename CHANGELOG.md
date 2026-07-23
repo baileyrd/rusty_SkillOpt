@@ -24,6 +24,8 @@ Format: Added / Changed / Deprecated / Removed / Fixed / Security, newest first.
 - `Provider::AzureOpenAi` + `AzureOpenAiBackend` (`api-key` header auth,
   resource-endpoint + deployment-name URL shape, optional `api_version`),
   and `configs/azure_openai_example.yaml`.
+- `configs/qwen_example.yaml` — Qwen via DashScope's OpenAI-compatible mode,
+  using the existing `openai_compatible` provider with no code changes.
 
 ### Changed
 - `openai_compatible`'s API key is now optional: no `Authorization` header

@@ -83,6 +83,14 @@ out of the box — it exposes an OpenAI-compatible endpoint and doesn't check
 auth, so no API key env var is needed at all. See `configs/ollama_example.yaml`
 (`base_url: http://localhost:11434/v1`, no `api_key_env` set).
 
+Qwen models are covered the same way, via Alibaba Cloud DashScope's
+OpenAI-compatible mode — see `configs/qwen_example.yaml`
+(`base_url: https://dashscope.aliyuncs.com/compatible-mode/v1`). Verified at
+the code level against DashScope's documented contract, not with a live
+call (no API key available, and the domain is blocked by this session's
+egress policy) — if DashScope's actual behavior diverges, it's a one-line
+config fix, not a code change.
+
 Azure OpenAI doesn't fit `openai_compatible`'s request shape (it uses an
 `api-key` header instead of `Authorization: Bearer`, and encodes a
 deployment name in the URL instead of `model` in the body), so it's its own
@@ -115,7 +123,6 @@ Built as a broad-but-bounded first pass:
   access or API keys — see `crates/skillopt-envs/src/synthetic_arithmetic.rs`.
   Adding a real benchmark (e.g. a QA dataset) means implementing
   `Environment` and registering it in `skillopt-envs`'s factory.
-- **Not implemented**: a WebUI/monitoring dashboard, additional backend
-  providers (Qwen, MiniMax), and an offline self-evolution ("Sleep") engine.
-  The trait boundaries are there for these to be added without touching
-  `skillopt-core`.
+- **Not implemented**: a WebUI/monitoring dashboard, a MiniMax backend, and
+  an offline self-evolution ("Sleep") engine. The trait boundaries are there
+  for these to be added without touching `skillopt-core`.
