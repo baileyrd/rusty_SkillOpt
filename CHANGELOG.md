@@ -21,6 +21,9 @@ Format: Added / Changed / Deprecated / Removed / Fixed / Security, newest first.
 - `configs/ollama_example.yaml` — the `openai_compatible` provider now works
   against Ollama (and other no-auth local OpenAI-compatible servers) with no
   API key env var needed at all.
+- `Provider::AzureOpenAi` + `AzureOpenAiBackend` (`api-key` header auth,
+  resource-endpoint + deployment-name URL shape, optional `api_version`),
+  and `configs/azure_openai_example.yaml`.
 
 ### Changed
 - `openai_compatible`'s API key is now optional: no `Authorization` header

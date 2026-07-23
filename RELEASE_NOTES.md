@@ -7,6 +7,29 @@ commit instead.
 
 ---
 
+## Add Azure OpenAI backend (parity-loop issue #7)
+**2026-07-23** · [PR #7](https://github.com/baileyrd/rusty_SkillOpt/pull/7)
+
+- **Added:** `Provider::AzureOpenAi` + `AzureOpenAiBackend`. Azure OpenAI's
+  API differs from plain `openai_compatible` in two ways that provider
+  doesn't accommodate: auth is an `api-key` header (not `Authorization:
+  Bearer`), and the URL encodes the resource endpoint + deployment name
+  rather than taking `model` in the request body
+  (`{endpoint}/openai/deployments/{deployment}/chat/completions?api-version=...`).
+- New `BackendConfig.api_version` field (optional, Azure-only, defaults to a
+  recent stable GA version). `base_url` is the resource endpoint, `model` is
+  the deployment name, `api_key_env` defaults to `AZURE_OPENAI_API_KEY`.
+- Also fixed the same latent snake_case-rename pitfall caught on
+  `openai_compatible` earlier: `AzureOpenAi` would have derived
+  `azure_open_ai`, not the documented `azure_openai` — added the
+  `#[serde(rename = ...)]` and a regression test before it could ship broken.
+- First issue closed by a `/parity-loop` run against Microsoft SkillOpt's
+  feature set (see `gap-analysis.md`) — filed as issue #7, small/additive/
+  no-new-dependency, so implemented autonomously per the loop's rules.
+- New tests: socket-level (real `TcpListener`, no mocking crate) asserting
+  the `api-key` header, URL shape, and default `api_version`, plus a
+  factory-level test of the base_url/key requirement.
+
 ## Support Ollama (and other no-auth local servers) via openai_compatible
 **2026-07-23** · [PR #5](https://github.com/baileyrd/rusty_SkillOpt/pull/5)
 

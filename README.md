@@ -45,8 +45,8 @@ crates/
                    edit engine, YAML config, batch scheduler, the engine
                    (training loop orchestration)
   skillopt-model/  ChatBackend impls: Anthropic Messages API, OpenAI-compatible
-                   chat completions (OpenAI/Azure/local), and a network-free
-                   Mock backend for tests and dry runs
+                   chat completions (OpenAI/local), Azure OpenAI, and a
+                   network-free Mock backend for tests and dry runs
   skillopt-envs/   Environment impls: a deterministic, offline synthetic
                    arithmetic word-problem benchmark with programmatic scoring
   skillopt-cli/    the `skillopt` binary (`train`, `eval` subcommands)
@@ -83,6 +83,13 @@ out of the box — it exposes an OpenAI-compatible endpoint and doesn't check
 auth, so no API key env var is needed at all. See `configs/ollama_example.yaml`
 (`base_url: http://localhost:11434/v1`, no `api_key_env` set).
 
+Azure OpenAI doesn't fit `openai_compatible`'s request shape (it uses an
+`api-key` header instead of `Authorization: Bearer`, and encodes a
+deployment name in the URL instead of `model` in the body), so it's its own
+`provider: azure_openai` — see `configs/azure_openai_example.yaml`
+(`base_url` is the resource endpoint, `model` is the deployment name,
+`api_key_env` defaults to `AZURE_OPENAI_API_KEY`, `api_version` is optional).
+
 ## Config
 
 See `configs/example.yaml` for the full shape. Key `train` knobs, and their
@@ -100,14 +107,15 @@ rough SkillOpt-training analogy:
 
 Built as a broad-but-bounded first pass:
 
-- **Backends**: Anthropic + any OpenAI-compatible endpoint, behind a
-  `ChatBackend` trait, plus a Mock backend for offline tests.
+- **Backends**: Anthropic, any OpenAI-compatible endpoint (including local
+  runners like Ollama), and Azure OpenAI, behind a `ChatBackend` trait, plus
+  a Mock backend for offline tests.
 - **Benchmark**: one deterministic synthetic environment
   (`synthetic_arithmetic`) so the whole loop is testable without network
   access or API keys — see `crates/skillopt-envs/src/synthetic_arithmetic.rs`.
   Adding a real benchmark (e.g. a QA dataset) means implementing
   `Environment` and registering it in `skillopt-envs`'s factory.
 - **Not implemented**: a WebUI/monitoring dashboard, additional backend
-  providers (Azure-specific auth, Qwen, MiniMax), and an offline
-  self-evolution ("Sleep") engine. The trait boundaries are there for these
-  to be added without touching `skillopt-core`.
+  providers (Qwen, MiniMax), and an offline self-evolution ("Sleep") engine.
+  The trait boundaries are there for these to be added without touching
+  `skillopt-core`.
