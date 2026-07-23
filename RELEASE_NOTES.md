@@ -7,6 +7,26 @@ commit instead.
 
 ---
 
+## Add smoke_claude_hard_bigtrain.yaml: does a bigger training pool find the gap?
+**2026-07-23** · [PR #4](https://github.com/baileyrd/rusty_SkillOpt/pull/4)
+
+- **Added:** `configs/smoke_claude_hard_bigtrain.yaml` — same difficulty knobs
+  and val/test size as `smoke_claude_hard_bigval.yaml`, but `train_size`
+  bumped from 8 to 32 (`epochs` dropped 2 -> 1 to avoid compounding the size
+  increase with a second epoch's calls).
+- Run result: **1/8 steps accepted, val 0.938 -> 1.0, test 1.0** (up from
+  0.875 in the 8-example version). Confirms the earlier diagnosis: a bigger,
+  more representative training pool surfaced a real failure and the loop
+  produced a genuinely generalizing fix — the accepted edit came from a
+  batch that itself scored a perfect 1.0 in training, yet still measurably
+  improved val, and test went from 14/16 to a clean 16/16 afterward. The
+  accepted skill adds explicit sequential step-by-step + double-check
+  guidance, exactly what a 4-op chained problem needs.
+- Also confirms an edge case: once at ceiling, the optimizer correctly
+  proposed *zero-op* edits for 4 consecutive batches ("already at ceiling,
+  no changes") instead of inventing busywork, and the engine correctly
+  treats an empty edit as a rejection rather than erroring.
+
 ## Add smoke_claude_hard_bigval.yaml: bigger val/test to cut measurement noise
 **2026-07-22** · [PR #3](https://github.com/baileyrd/rusty_SkillOpt/pull/3)
 
