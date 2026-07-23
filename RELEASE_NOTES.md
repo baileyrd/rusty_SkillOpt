@@ -7,6 +7,24 @@ commit instead.
 
 ---
 
+## Add smoke_claude_hard_bigval.yaml: bigger val/test to cut measurement noise
+**2026-07-22** · [PR #3](https://github.com/baileyrd/rusty_SkillOpt/pull/3)
+
+- **Added:** `configs/smoke_claude_hard_bigval.yaml` — same difficulty knobs
+  as `smoke_claude_hard.yaml` (multi-step chaining, heavier distractors) but
+  val/test bumped from 4 to 16 examples each. Running the 4-example version 6
+  times showed val flipping between 0.75 and 1.0 run to run — at that size a
+  single wrong answer swings the score by 0.25, making "does it top out" hard
+  to distinguish from noise.
+- Run result: val 1.0 -> 1.0 (0/4 accepted, all 16 val examples correct every
+  step), but **test score 0.875** (2/16 wrong). Verified both failures
+  (`test-36`, `test-38`) are legitimate 4-op chained problems with correct
+  expected values, not another generator bug. Real finding: with only 8
+  training examples, the loop never happened to see a chain hard enough to
+  trigger a training failure and give the optimizer something to react to,
+  even though the failure mode exists in the broader distribution — a
+  training-set-diversity gap, not a "too easy" or "already solved" ceiling.
+
 ## Fix distractor sentences colliding with the protagonist's name
 **2026-07-22**
 
