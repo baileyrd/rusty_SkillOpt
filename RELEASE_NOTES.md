@@ -7,6 +7,24 @@ commit instead.
 
 ---
 
+## Support Qwen via DashScope's OpenAI-compatible mode (parity-loop issue #8)
+**2026-07-23** · [PR #14](https://github.com/baileyrd/rusty_SkillOpt/pull/14)
+
+- **Added:** `configs/qwen_example.yaml`. Alibaba Cloud DashScope's
+  OpenAI-compatible mode speaks standard Bearer auth + OpenAI-shaped
+  chat-completions JSON at `/chat/completions` - exactly what
+  `openai_compatible` already implements, the same way
+  `configs/ollama_example.yaml` covers Ollama. **No code changes.**
+- Verification is code-level only (DashScope's documented contract matches
+  the existing request shape), not a live call: no DashScope API key was
+  available, and `dashscope.aliyuncs.com` returned the same egress-policy
+  403 that blocked `ollama.com` earlier in this session. Noted explicitly
+  in the config's comments so a divergence reads as "update this example,"
+  not "something's silently broken."
+- Second issue closed by the `/parity-loop` run (see `gap-analysis.md`,
+  issue #8) - confirms the gap analysis's prediction that this gap would
+  likely close without touching Rust code at all.
+
 ## Add Azure OpenAI backend (parity-loop issue #7)
 **2026-07-23** · [PR #7](https://github.com/baileyrd/rusty_SkillOpt/pull/7)
 
