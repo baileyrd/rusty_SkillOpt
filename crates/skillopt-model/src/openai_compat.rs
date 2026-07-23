@@ -6,10 +6,11 @@ const DEFAULT_BASE_URL: &str = "https://api.openai.com/v1";
 
 /// Works against any OpenAI-compatible `/chat/completions` endpoint:
 /// OpenAI, Azure OpenAI (with the right `base_url`/deployment as `model`),
-/// and self-hosted OpenAI-compatible servers.
+/// self-hosted servers, and local runners like Ollama (`base_url:
+/// http://localhost:11434/v1`) that don't check auth at all.
 pub struct OpenAiCompatBackend {
     client: reqwest::Client,
-    api_key: String,
+    api_key: Option<String>,
     base_url: String,
     model: String,
     temperature: Option<f32>,
@@ -17,8 +18,10 @@ pub struct OpenAiCompatBackend {
 }
 
 impl OpenAiCompatBackend {
+    /// `api_key: None` sends no `Authorization` header at all, for servers
+    /// (Ollama, most local OpenAI-compatible runners) that don't require one.
     pub fn new(
-        api_key: String,
+        api_key: Option<String>,
         base_url: Option<String>,
         model: String,
         temperature: Option<f32>,
@@ -91,13 +94,13 @@ impl ChatBackend for OpenAiCompatBackend {
             temperature: self.temperature,
         };
 
-        let resp = self
+        let mut req_builder = self
             .client
-            .post(format!("{}/chat/completions", self.base_url))
-            .bearer_auth(&self.api_key)
-            .json(&req)
-            .send()
-            .await?;
+            .post(format!("{}/chat/completions", self.base_url));
+        if let Some(api_key) = &self.api_key {
+            req_builder = req_builder.bearer_auth(api_key);
+        }
+        let resp = req_builder.json(&req).send().await?;
 
         let status = resp.status();
         let body = resp.text().await?;

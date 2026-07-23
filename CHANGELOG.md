@@ -18,6 +18,13 @@ Format: Added / Changed / Deprecated / Removed / Fixed / Security, newest first.
   `full_claude.yaml` for real Anthropic-backed runs).
 - Repo governance scaffolding (this changelog, RELEASE_NOTES, CONTRIBUTING,
   SECURITY, CODE_OF_CONDUCT, ARCHITECTURE, ADR log, PR/issue templates, CI).
+- `configs/ollama_example.yaml` — the `openai_compatible` provider now works
+  against Ollama (and other no-auth local OpenAI-compatible servers) with no
+  API key env var needed at all.
+
+### Changed
+- `openai_compatible`'s API key is now optional: no `Authorization` header
+  is sent when none is configured, instead of erroring.
 
 ### Fixed
 - reqwest now uses the OS native root store instead of a fixed bundled trust
@@ -27,8 +34,10 @@ Format: Added / Changed / Deprecated / Removed / Fixed / Security, newest first.
 - `synthetic_arithmetic`'s distractor sentences could name the protagonist
   themself, producing self-contradictory problem text; distractor name
   selection now excludes the protagonist.
+- `Provider`'s YAML representation for `openai_compatible` had silently
+  derived as `open_ai_compatible`, contradicting every doc/example config in
+  the repo; never previously exercised by a real run.
 
-### Changed
 ### Security
 
 <!-- ## [0.1.0] - YYYY-MM-DD

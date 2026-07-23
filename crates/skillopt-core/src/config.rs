@@ -9,6 +9,9 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 pub enum Provider {
     Anthropic,
+    // `snake_case` alone would derive "open_ai_compatible" ("Ai" is treated
+    // as its own word); every doc/config in this repo uses "openai_compatible".
+    #[serde(rename = "openai_compatible")]
     OpenAiCompatible,
     Mock,
 }
@@ -149,5 +152,24 @@ env:
         assert_eq!(cfg.train.batch_size, 4);
         assert_eq!(cfg.executor.provider, Provider::Mock);
         assert_eq!(cfg.env.name, "synthetic_arithmetic");
+    }
+
+    #[test]
+    fn provider_yaml_names_match_documented_strings() {
+        // Every doc/example config in this repo writes these exact strings;
+        // a derive-only rename_all would silently produce
+        // "open_ai_compatible" instead and break every one of them.
+        assert_eq!(
+            serde_yaml::from_str::<Provider>("anthropic").unwrap(),
+            Provider::Anthropic
+        );
+        assert_eq!(
+            serde_yaml::from_str::<Provider>("openai_compatible").unwrap(),
+            Provider::OpenAiCompatible
+        );
+        assert_eq!(
+            serde_yaml::from_str::<Provider>("mock").unwrap(),
+            Provider::Mock
+        );
     }
 }
