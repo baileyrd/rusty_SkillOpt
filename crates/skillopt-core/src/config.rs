@@ -13,6 +13,10 @@ pub enum Provider {
     // as its own word); every doc/config in this repo uses "openai_compatible".
     #[serde(rename = "openai_compatible")]
     OpenAiCompatible,
+    // Same pitfall: `snake_case` alone derives "azure_open_ai", not the
+    // "azure_openai" every doc/config in this repo uses.
+    #[serde(rename = "azure_openai")]
+    AzureOpenAi,
     Mock,
 }
 
@@ -30,6 +34,10 @@ pub struct BackendConfig {
     pub temperature: Option<f32>,
     #[serde(default = "default_max_tokens")]
     pub max_tokens: u32,
+    /// Azure OpenAI's required `api-version` query param. Ignored by every
+    /// other provider. Defaults to a recent stable GA version if unset.
+    #[serde(default)]
+    pub api_version: Option<String>,
 }
 
 fn default_max_tokens() -> u32 {
@@ -166,6 +174,10 @@ env:
         assert_eq!(
             serde_yaml::from_str::<Provider>("openai_compatible").unwrap(),
             Provider::OpenAiCompatible
+        );
+        assert_eq!(
+            serde_yaml::from_str::<Provider>("azure_openai").unwrap(),
+            Provider::AzureOpenAi
         );
         assert_eq!(
             serde_yaml::from_str::<Provider>("mock").unwrap(),

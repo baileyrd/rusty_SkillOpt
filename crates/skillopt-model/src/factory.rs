@@ -3,6 +3,7 @@ use std::sync::Arc;
 use skillopt_core::{BackendConfig, ChatBackend, Provider};
 
 use crate::anthropic::AnthropicBackend;
+use crate::azure_openai::AzureOpenAiBackend;
 use crate::mock::MockBackend;
 use crate::openai_compat::OpenAiCompatBackend;
 
@@ -49,6 +50,29 @@ pub fn build_backend(cfg: &BackendConfig) -> anyhow::Result<Arc<dyn ChatBackend>
                 cfg.max_tokens,
             )))
         }
+        Provider::AzureOpenAi => {
+            let key_env = cfg
+                .api_key_env
+                .clone()
+                .unwrap_or_else(|| "AZURE_OPENAI_API_KEY".to_string());
+            let api_key = std::env::var(&key_env).map_err(|_| {
+                anyhow::anyhow!("missing API key: environment variable {key_env} is not set")
+            })?;
+            let endpoint = cfg.base_url.clone().ok_or_else(|| {
+                anyhow::anyhow!(
+                    "azure_openai requires base_url (the resource endpoint, \
+                     e.g. https://my-resource.openai.azure.com)"
+                )
+            })?;
+            Ok(Arc::new(AzureOpenAiBackend::new(
+                api_key,
+                endpoint,
+                cfg.model.clone(),
+                cfg.api_version.clone(),
+                cfg.temperature,
+                cfg.max_tokens,
+            )))
+        }
     }
 }
 
@@ -65,6 +89,7 @@ mod tests {
             api_key_env: api_key_env.map(|s| s.to_string()),
             temperature: None,
             max_tokens: 64,
+            api_version: None,
         }
     }
 
@@ -93,5 +118,37 @@ mod tests {
         std::env::set_var("SOME_OTHER_KEY", "sk-explicit");
         assert!(build_backend(&cfg(Some("SOME_OTHER_KEY"))).is_ok());
         std::env::remove_var("SOME_OTHER_KEY");
+    }
+
+    #[test]
+    fn azure_openai_requires_base_url_and_key() {
+        std::env::remove_var("AZURE_OPENAI_API_KEY");
+
+        let base = BackendConfig {
+            provider: Provider::AzureOpenAi,
+            model: "gpt-4o-deployment".into(),
+            base_url: None,
+            api_key_env: None,
+            temperature: None,
+            max_tokens: 64,
+            api_version: None,
+        };
+
+        // No base_url: errors, regardless of key.
+        std::env::set_var("AZURE_OPENAI_API_KEY", "sk-azure");
+        assert!(build_backend(&base).is_err());
+
+        // base_url set but no key: errors.
+        std::env::remove_var("AZURE_OPENAI_API_KEY");
+        let with_url = BackendConfig {
+            base_url: Some("https://my-resource.openai.azure.com".into()),
+            ..base
+        };
+        assert!(build_backend(&with_url).is_err());
+
+        // Both set: succeeds.
+        std::env::set_var("AZURE_OPENAI_API_KEY", "sk-azure");
+        assert!(build_backend(&with_url).is_ok());
+        std::env::remove_var("AZURE_OPENAI_API_KEY");
     }
 }
