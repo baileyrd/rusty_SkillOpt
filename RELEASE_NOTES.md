@@ -7,6 +7,31 @@ commit instead.
 
 ---
 
+## Support Ollama (and other no-auth local servers) via openai_compatible
+**2026-07-23** · [PR #5](https://github.com/baileyrd/rusty_SkillOpt/pull/5)
+
+- **Added:** `configs/ollama_example.yaml` — the `openai_compatible`
+  provider already worked against Ollama's OpenAI-compatible endpoint in
+  principle (`base_url: http://localhost:11434/v1`), it just required a
+  dummy API key env var for a server that doesn't check auth at all.
+- **Changed:** `openai_compatible`'s API key is now optional. If
+  `api_key_env` is explicitly set in config, that variable must still be
+  present (erroring otherwise - the user named it on purpose); if it's
+  unset, `OPENAI_API_KEY` is used when present, and no `Authorization`
+  header is sent at all when neither is set.
+- **Fixed a real, previously-latent bug found while wiring this up:**
+  `Provider`'s `#[serde(rename_all = "snake_case")]` derives
+  `open_ai_compatible` for the `OpenAiCompatible` variant, not
+  `openai_compatible` - every doc and example config in this repo has
+  always written the latter. It never surfaced because no real run had
+  ever actually used `provider: openai_compatible` from a YAML file until
+  this config. Added `#[serde(rename = "openai_compatible")]` plus a
+  regression test asserting all three provider strings parse as documented.
+- New tests: a real socket-level test (`openai_compat_auth.rs`, no mocking
+  crate) asserting no `Authorization` header goes out when no key is
+  configured and one does when a key is set, plus a factory-level test of
+  the api_key_env resolution order.
+
 ## Add smoke_claude_hard_bigtrain.yaml: does a bigger training pool find the gap?
 **2026-07-23** · [PR #4](https://github.com/baileyrd/rusty_SkillOpt/pull/4)
 

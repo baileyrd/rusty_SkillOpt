@@ -78,6 +78,11 @@ To actually train against a real model, edit `configs/example.yaml`: set
 `ANTHROPIC_API_KEY` set) or `provider: openai_compatible` (with
 `OPENAI_API_KEY` set, and `base_url` for non-OpenAI-compatible endpoints).
 
+`openai_compatible` also covers local runners like [Ollama](https://ollama.com)
+out of the box — it exposes an OpenAI-compatible endpoint and doesn't check
+auth, so no API key env var is needed at all. See `configs/ollama_example.yaml`
+(`base_url: http://localhost:11434/v1`, no `api_key_env` set).
+
 ## Config
 
 See `configs/example.yaml` for the full shape. Key `train` knobs, and their
