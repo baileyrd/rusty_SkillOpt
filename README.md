@@ -1,5 +1,7 @@
 # rusty_skillopt
 
+> **Archived — merged into [Rusty Mill](https://github.com/Rusty-Mill/rusty_mill).** This crate now lives at [`crates/rusty_skillopt`](https://github.com/Rusty-Mill/rusty_mill/tree/main/crates/rusty_skillopt) in the Rusty Mill monorepo, which is where active development, issues, and pull requests happen now. This standalone repo is kept for historical reference only.
+
 A from-scratch Rust take on the core idea behind Microsoft's
 [SkillOpt](https://github.com/microsoft/SkillOpt): treat a skill markdown
 document as the trainable state of a frozen LLM agent, and optimize it with
